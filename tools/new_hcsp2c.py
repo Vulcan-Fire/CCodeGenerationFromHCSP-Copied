@@ -44,17 +44,3 @@ if __name__ == "__main__":
     decls = HCSPDeclarations(modules + [HCSPSystem(module_insts)])
     with open(args.outputdir+"systemv2.txt", 'w') as f:
         f.write(decls.export())
-
-
-
-examples
---LIB
-----hcsp2c.c
-----hcsp2c.h
---TCS
-----json
-----hcsp
-----c
-------*.c
-------*.h
-------makefile
