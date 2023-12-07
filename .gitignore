@@ -37,3 +37,4 @@ hcsp2c/tests/
 !hcsp2c/tests/hcsp2c_test.py
 !hcsp2c/tests/simc_test.py
 !hcsp2c/tests/sys_test.py
+!using/output_files/*
