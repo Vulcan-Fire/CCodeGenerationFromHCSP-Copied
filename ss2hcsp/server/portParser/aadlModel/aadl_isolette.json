@@ -1,1 +1,0 @@
-{"model_name": "process_HeatSW_impl_Instance", "Outport": ["currrentTemp"], "Inport": ["desiredTemp"]}

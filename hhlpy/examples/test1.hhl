@@ -1,7 +1,0 @@
-constants
-    a == 1;
-end
-function bar(x) = x + a;
-pre [x >= 0];
-x := bar(x);
-post [x >= a];

@@ -484,7 +484,7 @@ c_process_template = \
 """
 void* %s (void* arg) {
     threadNumber = (int)(*((int*)arg));
-    %s
+%s
     threadState[threadNumber] = STATE_STOPPED;
     updateCurrentTime(threadNumber);
     return NULL;
@@ -498,7 +498,7 @@ body_template = \
 
 static int threadNumber = 0;
 static int midInt = 0;
-static int is_comm = 0;
+static int is_term = 0;
 static String* midString = NULL;
 static List* midList = NULL;
 static Channel channel;
@@ -527,11 +527,11 @@ def transferToCProcess(name: str, info: HCSPInfo, context: TypeContext) -> str:
         if var not in context.varTypes[info.name]:
             raise AssertionError("type of %s in %s is unkonwn." % (var, info.name))
         if isinstance(context.varTypes[info.name][var], RealType):
-            init_body += "\tstatic double %s = 0.0;\n" % var
+            init_body += "static double %s = 0.0;\n" % var
         elif isinstance(context.varTypes[info.name][var], StringType):
-            init_body += "\tstatic String %s;\n" % var
+            init_body += "static String %s;\n" % var
         elif isinstance(context.varTypes[info.name][var], ListType):
-            init_body += "\tstatic List %s;\n" % var
+            init_body += "static List %s;\n" % var
         else:
             raise AssertionError("init: unknown type for variable %s" % var)
 
@@ -709,13 +709,13 @@ def transferToC(info: hcsp.HCSPInfo, context: TypeContext) -> str:
             if_hps = hp.if_hps
             else_hp = hp.else_hp
 
-            res = "if (%s) { %s " % (transferToCExpr(if_hps[0][0]), rec(if_hps[0][1]))
+            res = "if (%s) {\n%s\n" % (transferToCExpr(if_hps[0][0]), indent(rec(if_hps[0][1])))
             for cond, hp in if_hps[1:]:
-                res += "} else if (%s) { %s " % (transferToCExpr(cond), rec(hp))
+                res += "} else if (%s) {\n%s\n" % (transferToCExpr(cond), indent(rec(hp)))
             if else_hp is None:
                 res += "}"
             else:
-                res += "} else { %s }" % rec(else_hp)
+                res += "} else {\n%s\n}" % indent(rec(else_hp))
 
             c_str = res
         elif isinstance(hp, hcsp.Sequence):
@@ -812,6 +812,7 @@ def transferToC(info: hcsp.HCSPInfo, context: TypeContext) -> str:
                 out_hps.append(rec(io_comm[1]))
 
             res = ""
+            res += "midInt = -1;\nis_term = 0;\n"
             for comm_hp in comm_hps:
                 if comm_hp is not None:
                     res += "%s\n" % comm_hp
@@ -821,7 +822,7 @@ def transferToC(info: hcsp.HCSPInfo, context: TypeContext) -> str:
                 if i > 0:
                     choice_str += "else "
                 choice_str += "if (midInt == %d) {\n%s\n}" % (i, indent(out_hps[i]))
-            res += "h = step_size;\nis_comm = 0;\n"
+            res += "h = step_size;\n"
             loop_cp = ""
             if info.outputs:
                 loop_cp += outputVars()
@@ -853,15 +854,16 @@ def transferToC(info: hcsp.HCSPInfo, context: TypeContext) -> str:
             for var_name, e in eqs:
                 update = "%s = %s_ori + (%s_dot1 + 2 * %s_dot2 + 2 * %s_dot3 + %s_dot4) * h / 6;\n" % (var_name, var_name, var_name, var_name, var_name, var_name)
                 loop_cp += update
-            loop_cp += "if (midInt >= 0) {\n"
-            loop_cp += "    break;\n"
-            loop_cp += "}\n"
-            loop_cp += "if (!(%s)) {\n" % constraint
+            # loop_cp += "if (midInt >= 0) {\n"
+            # loop_cp += "    break;\n"
+            # loop_cp += "}\n"
+            loop_cp += "if (midInt < 0 && !(%s)) {\n" % constraint
             loop_cp += "    interruptClear(threadNumber, %d, channels);\n" % len(comm_hps)
             loop_cp += "    midInt = -1;\n"
-            loop_cp += "    break;\n"
+            loop_cp += "    is_term = 1;\n"
+            # loop_cp += "    break;\n"
             loop_cp += "}\n"
-            res += "while (1) {\n%s\n}\n" % indent(loop_cp)
+            res += "for (int loop_cnt = 0; midInt < 0 && is_term == 0 && loop_cnt < max_loop_cnt; loop_cnt++) {\n%s\n}\n" % indent(loop_cp)
             res += choice_str
             c_str = res
         elif isinstance(hp, hcsp.SelectComm):
@@ -899,6 +901,7 @@ header_header = \
 
 #define step_size %s
 #define output_step_size %s
+#define max_loop_cnt %s
 """
 
 main_header = \
@@ -935,7 +938,7 @@ def convertHps(name: str, infos: List[HCSPInfo], step_size:float = 1e-7, output_
     res = ""
     res += header % (name)
     count = 0
-    head_res = header_header % (name, name, step_size, output_step_size)
+    head_res = header_header % (name, name, step_size, output_step_size, 1000000000)
     for channel in ctx.channelTypes.keys():
         head_res += "#define %s %d\n" % (channel, count)
         count += 1
