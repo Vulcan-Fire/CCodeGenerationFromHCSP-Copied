@@ -33,7 +33,7 @@ hhlpy/gui/package-lock.json
 hhlpy/wolframpath.txt
 hcsp2c/log_catch.py
 Examples/AADL/CCS/TCS/generatedcode_nobus/
-hcsp2c/tests/
+hcsp2c/tests/*
 !hcsp2c/tests/hcsp2c_test.py
 !hcsp2c/tests/simc_test.py
 !hcsp2c/tests/sys_test.py
