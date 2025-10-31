@@ -1,0 +1,62 @@
+%type: module
+
+module TemperatureController():
+output T, heater_state;
+begin
+  T := 20.0;
+  T_set := 22.0;
+  heater_state := 0;
+  t := 0.0;
+  tt := 0.0;
+  env_temp := 18.0;
+  heating_rate := 0.1;
+  cooling_rate := 0.05;
+
+  {
+    if (T < T_set - 0.5) {
+      heater_state := 1;
+    } else if (T > T_set + 0.5) {
+      heater_state := 0;
+    }
+
+    { tt_dot = 1,
+      T_dot = (if heater_state == 1 then heating_rate else -cooling_rate) * (T - env_temp)
+      & tt < 1.0
+    }
+
+    t := t + tt;
+    tt := 0;
+  }*
+end
+endmodule
+
+
+module Environment():
+output env_temp;
+begin
+  env_temp := 18.0;
+  t := 0.0;
+  {
+    { t_dot = 1,
+      env_temp_dot = 0.01 * sin(3.1415 * t / 60)
+      & t < 1000.0
+    }
+  }*
+end
+endmodule
+
+
+module Logger():
+begin
+  {
+    inputs_lb_TemperatureController_rb__lb_T_rb_?data;
+    inputs_lb_TemperatureController_rb__lb_heater_state_rb_?heater_state;
+    skip;
+  }*
+end
+endmodule
+
+
+system
+  TemperatureController() || Environment() || Logger()
+endsystem
