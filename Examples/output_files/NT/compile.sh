@@ -1,0 +1,1 @@
+gcc NT.c NT__TemperatureController.c NT__Environment.c NT__Logger.c hcsp2c.c -lpthread -lm -o NT.out -g
