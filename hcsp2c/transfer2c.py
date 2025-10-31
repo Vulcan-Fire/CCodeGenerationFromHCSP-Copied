@@ -7,7 +7,7 @@ from typing import List
 from ss2hcsp.hcsp import hcsp
 from ss2hcsp.hcsp import expr
 from ss2hcsp.hcsp.hcsp import HCSPInfo, Procedure
-
+import math
 
 gl_var_type = {} # key: var_name, value:type,  0 -> undef, 1 -> double, 2 -> string, 3 -> list
 
@@ -408,8 +408,21 @@ def transferToCExpr(e: expr.Expr) -> str:
         # elif e.fun_name == "div":
         #     a, b = args
         #     return int(a) // int(b)
-        # elif e.fun_name == "sin":
-        #     return math.sin(args[0])
+
+        elif e.fun_name == "sin":
+            return f"sin({args[0]})"
+        elif e.fun_name == "cos":
+            return f"cos({args[0]})"
+        elif e.fun_name == "tan":
+            return f"tan({args[0]})"
+        elif e.fun_name == "exp":
+            return f"exp({args[0]})"
+        elif e.fun_name == "log":
+            return f"log({args[0]})"
+        elif e.fun_name == "sqrt":
+            return f"sqrt({args[0]})"
+        
+
         elif e.fun_name == "push":
             a, b = args
             if isinstance(b, expr.AVar):
@@ -525,15 +538,22 @@ def transferToCProcess(name: str, info: HCSPInfo, context: TypeContext) -> str:
     
     for var in vars:
         if var not in context.varTypes[info.name]:
-            raise AssertionError("type of %s in %s is unkonwn." % (var, info.name))
-        if isinstance(context.varTypes[info.name][var], RealType):
-            init_body += "static double %s = 0.0;\n" % var
-        elif isinstance(context.varTypes[info.name][var], StringType):
-            init_body += "static String %s;\n" % var
-        elif isinstance(context.varTypes[info.name][var], ListType):
-            init_body += "static List %s;\n" % var
+            # --- Added fallback for unknown variable types ---
+            print(f"[Warning] Type of '{var}' in module '{info.name}' is unknown — defaulting to double.")
+            context.varTypes[info.name][var] = RealType()   # default type
+
+        var_type = context.varTypes[info.name][var]
+
+        if isinstance(var_type, RealType):
+            init_body += f"static double {var} = 0.0;\n"
+        elif isinstance(var_type, StringType):
+            init_body += f"static String {var};\n"
+        elif isinstance(var_type, ListType):
+            init_body += f"static List {var};\n"
         else:
-            raise AssertionError("init: unknown type for variable %s" % var)
+            print(f"[Warning] Unknown type object for '{var}' in module '{info.name}' — defaulting to double.")
+            init_body += f"static double {var} = 0.0;\n"
+
 
     body += indent(transferToC(info, context))
 
